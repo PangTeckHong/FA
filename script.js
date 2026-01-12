@@ -213,7 +213,16 @@ function getOrCreateSessionId() {
 function parseMarkdown(text) {
     let html = text;
     
-    // Escape HTML tags first (security)
+    // Parse tables FIRST (before escaping HTML)
+    html = parseTable(html);
+    
+    // Escape HTML tags (security) - but preserve our table HTML
+    const tables = [];
+    html = html.replace(/<table class="chat-table">[\s\S]*?<\/table>/g, (match) => {
+        tables.push(match);
+        return `__TABLE_${tables.length - 1}__`;
+    });
+    
     html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     
     // Code blocks (```code```)
@@ -226,28 +235,54 @@ function parseMarkdown(text) {
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
     
-    // Italic (*text* or _text_)
+    // Italic (*text* or _text_) - must come after bold
     html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
     html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
     
-    // Headers (### Header)
+    // Horizontal rules (---)
+    html = html.replace(/^---+$/gm, '<hr>');
+    
+    // Blockquotes (> text)
+    html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+    
+    // Headers (must check from most specific to least)
     html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
     html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
     html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
     
+    // Ordered lists (1. item, 2. item, etc)
+    html = html.replace(/^\d+\. (.+)$/gm, '<li class="ol-item">$1</li>');
+    
     // Unordered lists (- item or * item)
-    html = html.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
-    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    html = html.replace(/^[*-] (.+)$/gm, '<li class="ul-item">$1</li>');
     
-    // Ordered lists (1. item)
-    html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+    // Wrap ordered list items in <ol>
+    html = html.replace(/((?:<li class="ol-item">.*?<\/li>\s*)+)/gs, '<ol>$1</ol>');
+    html = html.replace(/class="ol-item"/g, '');
     
-    // Line breaks
-    html = html.replace(/\n\n/g, '</p><p>');
+    // Wrap unordered list items in <ul>
+    html = html.replace(/((?:<li class="ul-item">.*?<\/li>\s*)+)/gs, '<ul>$1</ul>');
+    html = html.replace(/class="ul-item"/g, '');
+    
+    // Paragraphs (split by double line breaks)
+    html = html.replace(/\n\n+/g, '</p><p>');
     html = html.replace(/\n/g, '<br>');
     
-    // Parse tables (| header | header | format)
-    html = parseTable(html);
+    // Wrap in paragraph if not already wrapped
+    if (!html.startsWith('<')) {
+        html = '<p>' + html + '</p>';
+    } else {
+        html = '<p>' + html + '</p>';
+    }
+    
+    // Clean up empty paragraphs
+    html = html.replace(/<p><\/p>/g, '');
+    html = html.replace(/<p>\s*<\/p>/g, '');
+    
+    // Restore tables
+    tables.forEach((table, index) => {
+        html = html.replace(`__TABLE_${index}__`, table);
+    });
     
     return html;
 }
