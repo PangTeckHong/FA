@@ -101,7 +101,7 @@ if (ctaButton) {
  * Webhook Configuration
  * This connects to n8n workflow for AI integration
  */
-const WEBHOOK_URL = 'https://n8ngc.codeblazar.org/webhook/5cd5306a-d80c-4676-8b32-bcfcc95226ce';
+const WEBHOOK_URL = 'https://n8ngc.codeblazar.org/webhook/f330b68b-3b5a-45b8-bb65-952280da2264';
 
 /**
  * Send a message to the AI chatbot via webhook
