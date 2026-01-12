@@ -211,96 +211,101 @@ function getOrCreateSessionId() {
  * @returns {string} - HTML string
  */
 function parseMarkdown(text) {
-    let html = text;
-    
-    // Parse tables FIRST (before escaping HTML)
-    html = parseTable(html);
-    
-    // Escape HTML tags (security) - but preserve our table HTML
-    const tables = [];
-    html = html.replace(/<table class="chat-table">[\s\S]*?<\/table>/g, (match) => {
-        tables.push(match);
-        return `__TABLE_PLACEHOLDER_${tables.length - 1}__`;
-    });
-    
-    html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    
-    // Code blocks (```code```)
-    html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-    
-    // Inline code (`code`)
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-    
-    // Bold (**text** or __text__)
-    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-    
-    // Italic (*text* or _text_) - must come after bold
-    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
-    
-    // Horizontal rules (---)
-    html = html.replace(/^---+$/gm, '<hr>');
-    
-    // Blockquotes (> text)
-    html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
-    
-    // Headers (must check from most specific to least)
-    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-    
-    // Ordered lists (1. item, 2. item, etc)
-    html = html.replace(/^\d+\. (.+)$/gm, '<li class="ol-item">$1</li>');
-    
-    // Unordered lists (- item or * item)
-    html = html.replace(/^[*-] (.+)$/gm, '<li class="ul-item">$1</li>');
-    
-    // Wrap ordered list items in <ol>
-    html = html.replace(/((?:<li class="ol-item">.*?<\/li>\s*)+)/gs, '<ol>$1</ol>');
-    html = html.replace(/class="ol-item"/g, '');
-    
-    // Wrap unordered list items in <ul>
-    html = html.replace(/((?:<li class="ul-item">.*?<\/li>\s*)+)/gs, '<ul>$1</ul>');
-    html = html.replace(/class="ul-item"/g, '');
-    
-    // Restore tables BEFORE paragraph processing
-    tables.forEach((table, index) => {
-        html = html.replace(`__TABLE_PLACEHOLDER_${index}__`, `\n\n__TABLE_${index}__\n\n`);
-    });
-    
-    // Paragraphs (split by double line breaks)
-    html = html.replace(/\n\n+/g, '</p><p>');
-    html = html.replace(/\n/g, '<br>');
-    
-    // Wrap in paragraphs
-    html = '<p>' + html + '</p>';
-    
-    // Clean up paragraphs around tables and block elements
-    html = html.replace(/<p>__TABLE_(\d+)__<\/p>/g, '__TABLE_$1__');
-    html = html.replace(/<p>(<h[123]>)/g, '$1');
-    html = html.replace(/(<\/h[123]>)<\/p>/g, '$1');
-    html = html.replace(/<p>(<hr>)<\/p>/g, '$1');
-    html = html.replace(/<p>(<blockquote>)/g, '$1');
-    html = html.replace(/(<\/blockquote>)<\/p>/g, '$1');
-    html = html.replace(/<p>(<ul>)/g, '$1');
-    html = html.replace(/(<\/ul>)<\/p>/g, '$1');
-    html = html.replace(/<p>(<ol>)/g, '$1');
-    html = html.replace(/(<\/ol>)<\/p>/g, '$1');
-    html = html.replace(/<p>(<pre>)/g, '$1');
-    html = html.replace(/(<\/pre>)<\/p>/g, '$1');
-    
-    // Clean up empty paragraphs
-    html = html.replace(/<p><\/p>/g, '');
-    html = html.replace(/<p>\s*<\/p>/g, '');
-    html = html.replace(/<p><br><\/p>/g, '');
-    
-    // Restore tables as final step
-    tables.forEach((table, index) => {
-        html = html.replace(`__TABLE_${index}__`, table);
-    });
-    
-    return html;
+    try {
+        let html = text;
+        
+        // Parse tables FIRST (before escaping HTML)
+        html = parseTable(html);
+        
+        // Escape HTML tags (security) - but preserve our table HTML
+        const tables = [];
+        html = html.replace(/<table class="chat-table">[\s\S]*?<\/table>/g, (match) => {
+            tables.push(match);
+            return `__TABLE_PLACEHOLDER_${tables.length - 1}__`;
+        });
+        
+        html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
+        // Code blocks (```code```)
+        html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+        
+        // Inline code (`code`)
+        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        // Bold (**text** or __text__)
+        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        
+        // Italic (*text* or _text_) - must come after bold
+        html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+        
+        // Horizontal rules (---)
+        html = html.replace(/^---+$/gm, '<hr>');
+        
+        // Blockquotes (> text)
+        html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+        
+        // Headers (must check from most specific to least)
+        html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+        html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+        html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+        
+        // Ordered lists (1. item, 2. item, etc)
+        html = html.replace(/^\d+\. (.+)$/gm, '<li class="ol-item">$1</li>');
+        
+        // Unordered lists (- item or * item)
+        html = html.replace(/^[*-] (.+)$/gm, '<li class="ul-item">$1</li>');
+        
+        // Wrap ordered list items in <ol>
+        html = html.replace(/((?:<li class="ol-item">.*?<\/li>\s*)+)/gs, '<ol>$1</ol>');
+        html = html.replace(/class="ol-item"/g, '');
+        
+        // Wrap unordered list items in <ul>
+        html = html.replace(/((?:<li class="ul-item">.*?<\/li>\s*)+)/gs, '<ul>$1</ul>');
+        html = html.replace(/class="ul-item"/g, '');
+        
+        // Restore tables BEFORE paragraph processing
+        tables.forEach((table, index) => {
+            html = html.replace(`__TABLE_PLACEHOLDER_${index}__`, `\n\n__TABLE_${index}__\n\n`);
+        });
+        
+        // Paragraphs (split by double line breaks)
+        html = html.replace(/\n\n+/g, '</p><p>');
+        html = html.replace(/\n/g, '<br>');
+        
+        // Wrap in paragraphs
+        html = '<p>' + html + '</p>';
+        
+        // Clean up paragraphs around tables and block elements
+        html = html.replace(/<p>__TABLE_(\d+)__<\/p>/g, '__TABLE_$1__');
+        html = html.replace(/<p>(<h[123]>)/g, '$1');
+        html = html.replace(/(<\/h[123]>)<\/p>/g, '$1');
+        html = html.replace(/<p>(<hr>)<\/p>/g, '$1');
+        html = html.replace(/<p>(<blockquote>)/g, '$1');
+        html = html.replace(/(<\/blockquote>)<\/p>/g, '$1');
+        html = html.replace(/<p>(<ul>)/g, '$1');
+        html = html.replace(/(<\/ul>)<\/p>/g, '$1');
+        html = html.replace(/<p>(<ol>)/g, '$1');
+        html = html.replace(/(<\/ol>)<\/p>/g, '$1');
+        html = html.replace(/<p>(<pre>)/g, '$1');
+        html = html.replace(/(<\/pre>)<\/p>/g, '$1');
+        
+        // Clean up empty paragraphs
+        html = html.replace(/<p><\/p>/g, '');
+        html = html.replace(/<p>\s*<\/p>/g, '');
+        html = html.replace(/<p><br><\/p>/g, '');
+        
+        // Restore tables as final step
+        tables.forEach((table, index) => {
+            html = html.replace(`__TABLE_${index}__`, table);
+        });
+        
+        return html;
+    } catch (error) {
+        console.error('Error in parseMarkdown:', error);
+        // Return the original text wrapped in a paragraph if parsing fails
+        return '<p>' + text.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>';
+    }
 }
 
 /**
@@ -309,77 +314,82 @@ function parseMarkdown(text) {
  * @returns {string} - HTML with tables rendered
  */
 function parseTable(text) {
-    // Split text into lines for easier processing
-    const lines = text.split('\n');
-    let result = [];
-    let i = 0;
-    
-    while (i < lines.length) {
-        const line = lines[i].trim();
+    try {
+        // Split text into lines for easier processing
+        const lines = text.split('\n');
+        let result = [];
+        let i = 0;
         
-        // Check if this line looks like a table row (contains pipes)
-        if (line.includes('|')) {
-            // Try to find a complete table starting here
-            let tableLines = [];
-            let j = i;
+        while (i < lines.length) {
+            const line = lines[i].trim();
             
-            // Collect consecutive lines with pipes
-            while (j < lines.length && lines[j].trim().includes('|')) {
-                tableLines.push(lines[j].trim());
-                j++;
-            }
-            
-            // Check if we have at least 3 lines (header, separator, data)
-            // and the second line is a separator (contains dashes)
-            if (tableLines.length >= 3 && /^[\s\|:\-]+$/.test(tableLines[1])) {
-                // This is a valid table
-                let html = '<table class="chat-table">';
+            // Check if this line looks like a table row (contains pipes)
+            if (line.includes('|')) {
+                // Try to find a complete table starting here
+                let tableLines = [];
+                let j = i;
                 
-                // Process header row
-                const headerCells = tableLines[0]
-                    .split('|')
-                    .map(cell => cell.trim())
-                    .filter(cell => cell !== '');
+                // Collect consecutive lines with pipes
+                while (j < lines.length && lines[j].trim().includes('|')) {
+                    tableLines.push(lines[j].trim());
+                    j++;
+                }
                 
-                html += '<thead><tr>';
-                headerCells.forEach(cell => {
-                    html += `<th>${cell}</th>`;
-                });
-                html += '</tr></thead>';
-                
-                // Process data rows (skip separator at index 1)
-                html += '<tbody>';
-                for (let k = 2; k < tableLines.length; k++) {
-                    const cells = tableLines[k]
+                // Check if we have at least 3 lines (header, separator, data)
+                // and the second line is a separator (contains dashes)
+                if (tableLines.length >= 3 && /^[\s\|:\-]+$/.test(tableLines[1])) {
+                    // This is a valid table
+                    let html = '<table class="chat-table">';
+                    
+                    // Process header row
+                    const headerCells = tableLines[0]
                         .split('|')
                         .map(cell => cell.trim())
                         .filter(cell => cell !== '');
                     
-                    if (cells.length > 0) {
-                        html += '<tr>';
-                        cells.forEach(cell => {
-                            html += `<td>${cell}</td>`;
-                        });
-                        html += '</tr>';
+                    html += '<thead><tr>';
+                    headerCells.forEach(cell => {
+                        html += `<th>${cell}</th>`;
+                    });
+                    html += '</tr></thead>';
+                    
+                    // Process data rows (skip separator at index 1)
+                    html += '<tbody>';
+                    for (let k = 2; k < tableLines.length; k++) {
+                        const cells = tableLines[k]
+                            .split('|')
+                            .map(cell => cell.trim())
+                            .filter(cell => cell !== '');
+                        
+                        if (cells.length > 0) {
+                            html += '<tr>';
+                            cells.forEach(cell => {
+                                html += `<td>${cell}</td>`;
+                            });
+                            html += '</tr>';
+                        }
                     }
+                    html += '</tbody></table>';
+                    
+                    result.push(html);
+                    i = j; // Skip past the table
+                } else {
+                    // Not a valid table, just add the line
+                    result.push(lines[i]);
+                    i++;
                 }
-                html += '</tbody></table>';
-                
-                result.push(html);
-                i = j; // Skip past the table
             } else {
-                // Not a valid table, just add the line
+                // Regular line, not part of a table
                 result.push(lines[i]);
                 i++;
             }
-        } else {
-            // Regular line, not part of a table
-            result.push(lines[i]);
-            i++;
         }
+        
+        return result.join('\n');
+    } catch (error) {
+        console.error('Error in parseTable:', error);
+        return text; // Return original text if table parsing fails
     }
-    
-    return result.join('\n');
 }
 
 /**
