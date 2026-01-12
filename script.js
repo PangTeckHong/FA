@@ -144,14 +144,40 @@ async function sendMessageToAI(userMessage) {
             try {
                 const data = JSON.parse(responseText);
                 console.log('AI response received:', data);
+                console.log('Available fields:', Object.keys(data));
                 
                 // Extract AI response from the webhook response
-                // Adjust this based on your n8n/Flowise response structure
-                return data.response || data.message || data.output || data.text ||
-                       "I'm here to support you. Could you tell me more about what's on your mind?";
+                // Try multiple possible field names that n8n/Flowise might use
+                const aiMessage = data.response || data.message || data.output || 
+                                data.text || data.reply || data.answer || 
+                                data.ai_response || data.result || data.data;
+                
+                // If we found a message field, return it
+                if (aiMessage) {
+                    return typeof aiMessage === 'string' ? aiMessage : JSON.stringify(aiMessage);
+                }
+                
+                // If the entire response is a string, return it
+                if (typeof data === 'string') {
+                    return data;
+                }
+                
+                // If data has nested structure, try to find the message
+                if (data.data && typeof data.data === 'object') {
+                    const nestedMessage = data.data.response || data.data.message || 
+                                        data.data.output || data.data.text;
+                    if (nestedMessage) {
+                        return typeof nestedMessage === 'string' ? nestedMessage : JSON.stringify(nestedMessage);
+                    }
+                }
+                
+                // Last resort: return the entire JSON as a string so you can see the structure
+                console.warn('Could not find message field. Returning full response.');
+                return JSON.stringify(data, null, 2);
             } catch (parseError) {
                 console.log('Response is not JSON, using as plain text:', responseText);
-                return responseText || "I'm here to support you. Could you tell me more about what's on your mind?";
+                // Return the plain text response directly
+                return responseText;
             }
         } else {
             const errorText = await response.text();
