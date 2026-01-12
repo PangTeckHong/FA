@@ -206,6 +206,95 @@ function getOrCreateSessionId() {
 }
 
 /**
+ * Parse markdown-style formatting to HTML
+ * @param {string} text - The text with markdown
+ * @returns {string} - HTML string
+ */
+function parseMarkdown(text) {
+    let html = text;
+    
+    // Escape HTML tags first (security)
+    html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    
+    // Code blocks (```code```)
+    html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    
+    // Inline code (`code`)
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // Bold (**text** or __text__)
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+    
+    // Italic (*text* or _text_)
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+    
+    // Headers (### Header)
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    
+    // Unordered lists (- item or * item)
+    html = html.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    
+    // Ordered lists (1. item)
+    html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+    
+    // Line breaks
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = html.replace(/\n/g, '<br>');
+    
+    // Parse tables (| header | header | format)
+    html = parseTable(html);
+    
+    return html;
+}
+
+/**
+ * Parse markdown tables to HTML
+ * @param {string} text - Text that may contain markdown tables
+ * @returns {string} - HTML with tables rendered
+ */
+function parseTable(text) {
+    // Match markdown table pattern
+    const tableRegex = /((?:(?:^|\n)\|.+\|(?:\n|$))+)/g;
+    
+    return text.replace(tableRegex, (match) => {
+        const lines = match.trim().split('\n');
+        if (lines.length < 2) return match;
+        
+        let html = '<table class="chat-table">';
+        
+        // Process header row
+        const headerCells = lines[0].split('|').filter(cell => cell.trim());
+        html += '<thead><tr>';
+        headerCells.forEach(cell => {
+            html += `<th>${cell.trim()}</th>`;
+        });
+        html += '</tr></thead>';
+        
+        // Skip separator line (line 1)
+        // Process data rows
+        html += '<tbody>';
+        for (let i = 2; i < lines.length; i++) {
+            const cells = lines[i].split('|').filter(cell => cell.trim());
+            if (cells.length > 0) {
+                html += '<tr>';
+                cells.forEach(cell => {
+                    html += `<td>${cell.trim()}</td>`;
+                });
+                html += '</tr>';
+            }
+        }
+        html += '</tbody></table>';
+        
+        return html;
+    });
+}
+
+/**
  * Add a message to the chat window
  * @param {string} message - The message text
  * @param {string} sender - Either 'user' or 'ai'
@@ -226,10 +315,15 @@ function addChatMessage(message, sender) {
     const contentDiv = document.createElement('div');
     contentDiv.classList.add('message-content');
     
-    const messagePara = document.createElement('p');
-    messagePara.textContent = message;
-    
-    contentDiv.appendChild(messagePara);
+    // For AI messages, parse markdown. For user messages, keep as plain text
+    if (sender === 'ai') {
+        const formattedHTML = parseMarkdown(message);
+        contentDiv.innerHTML = `<div class="message-text">${formattedHTML}</div>`;
+    } else {
+        const messagePara = document.createElement('p');
+        messagePara.textContent = message;
+        contentDiv.appendChild(messagePara);
+    }
     
     // Assemble message
     if (sender === 'ai') {
