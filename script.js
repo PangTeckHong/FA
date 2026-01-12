@@ -124,27 +124,43 @@ async function sendMessageToAI(userMessage) {
         // Send POST request to webhook
         const response = await fetch(WEBHOOK_URL, {
             method: 'POST',
+            mode: 'cors',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify(payload)
         });
 
+        console.log('Response status:', response.status);
+        console.log('Response headers:', [...response.headers.entries()]);
+
         // Check if request was successful
         if (response.ok) {
-            const data = await response.json();
-            console.log('AI response received:', data);
+            const responseText = await response.text();
+            console.log('Raw response:', responseText);
             
-            // Extract AI response from the webhook response
-            // Adjust this based on your n8n/Flowise response structure
-            return data.response || data.message || data.output || 
-                   "I'm here to support you. Could you tell me more about what's on your mind?";
+            // Try to parse JSON response
+            try {
+                const data = JSON.parse(responseText);
+                console.log('AI response received:', data);
+                
+                // Extract AI response from the webhook response
+                // Adjust this based on your n8n/Flowise response structure
+                return data.response || data.message || data.output || data.text ||
+                       "I'm here to support you. Could you tell me more about what's on your mind?";
+            } catch (parseError) {
+                console.log('Response is not JSON, using as plain text:', responseText);
+                return responseText || "I'm here to support you. Could you tell me more about what's on your mind?";
+            }
         } else {
-            console.error('Webhook error:', response.status, response.statusText);
-            throw new Error('Failed to get AI response');
+            const errorText = await response.text();
+            console.error('Webhook error:', response.status, response.statusText, errorText);
+            throw new Error(`Failed to get AI response: ${response.status} ${response.statusText}`);
         }
     } catch (error) {
         console.error('AI request failed:', error);
+        console.error('Error details:', error.message, error.stack);
         // Return a fallback message
         return "I'm having trouble connecting right now. But I'm here for you. Would you like to try again?";
     }
