@@ -293,40 +293,77 @@ function parseMarkdown(text) {
  * @returns {string} - HTML with tables rendered
  */
 function parseTable(text) {
-    // Match markdown table pattern
-    const tableRegex = /((?:(?:^|\n)\|.+\|(?:\n|$))+)/g;
+    // Split text into lines for easier processing
+    const lines = text.split('\n');
+    let result = [];
+    let i = 0;
     
-    return text.replace(tableRegex, (match) => {
-        const lines = match.trim().split('\n');
-        if (lines.length < 2) return match;
+    while (i < lines.length) {
+        const line = lines[i].trim();
         
-        let html = '<table class="chat-table">';
-        
-        // Process header row
-        const headerCells = lines[0].split('|').filter(cell => cell.trim());
-        html += '<thead><tr>';
-        headerCells.forEach(cell => {
-            html += `<th>${cell.trim()}</th>`;
-        });
-        html += '</tr></thead>';
-        
-        // Skip separator line (line 1)
-        // Process data rows
-        html += '<tbody>';
-        for (let i = 2; i < lines.length; i++) {
-            const cells = lines[i].split('|').filter(cell => cell.trim());
-            if (cells.length > 0) {
-                html += '<tr>';
-                cells.forEach(cell => {
-                    html += `<td>${cell.trim()}</td>`;
-                });
-                html += '</tr>';
+        // Check if this line looks like a table row (contains pipes)
+        if (line.includes('|')) {
+            // Try to find a complete table starting here
+            let tableLines = [];
+            let j = i;
+            
+            // Collect consecutive lines with pipes
+            while (j < lines.length && lines[j].trim().includes('|')) {
+                tableLines.push(lines[j].trim());
+                j++;
             }
+            
+            // Check if we have at least 3 lines (header, separator, data)
+            // and the second line is a separator (contains dashes)
+            if (tableLines.length >= 3 && /^[\s\|:\-]+$/.test(tableLines[1])) {
+                // This is a valid table
+                let html = '<table class="chat-table">';
+                
+                // Process header row
+                const headerCells = tableLines[0]
+                    .split('|')
+                    .map(cell => cell.trim())
+                    .filter(cell => cell !== '');
+                
+                html += '<thead><tr>';
+                headerCells.forEach(cell => {
+                    html += `<th>${cell}</th>`;
+                });
+                html += '</tr></thead>';
+                
+                // Process data rows (skip separator at index 1)
+                html += '<tbody>';
+                for (let k = 2; k < tableLines.length; k++) {
+                    const cells = tableLines[k]
+                        .split('|')
+                        .map(cell => cell.trim())
+                        .filter(cell => cell !== '');
+                    
+                    if (cells.length > 0) {
+                        html += '<tr>';
+                        cells.forEach(cell => {
+                            html += `<td>${cell}</td>`;
+                        });
+                        html += '</tr>';
+                    }
+                }
+                html += '</tbody></table>';
+                
+                result.push(html);
+                i = j; // Skip past the table
+            } else {
+                // Not a valid table, just add the line
+                result.push(lines[i]);
+                i++;
+            }
+        } else {
+            // Regular line, not part of a table
+            result.push(lines[i]);
+            i++;
         }
-        html += '</tbody></table>';
-        
-        return html;
-    });
+    }
+    
+    return result.join('\n');
 }
 
 /**
