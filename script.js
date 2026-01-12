@@ -236,7 +236,7 @@ function parseMarkdown(text) {
         const tables = [];
         html = html.replace(/<table class="chat-table">[\s\S]*?<\/table>/g, (match) => {
             tables.push(match);
-            return `__TABLE_PLACEHOLDER_${tables.length - 1}__`;
+            return `<!---TABLE-PLACEHOLDER-${tables.length - 1}--->`; // Use HTML comment style
         });
         
         html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -279,9 +279,9 @@ function parseMarkdown(text) {
         html = html.replace(/((?:<li class="ul-item">.*?<\/li>\s*)+)/gs, '<ul>$1</ul>');
         html = html.replace(/class="ul-item"/g, '');
         
-        // Restore tables BEFORE paragraph processing
+        // Restore table placeholders BEFORE paragraph processing
         tables.forEach((table, index) => {
-            html = html.replace(`__TABLE_PLACEHOLDER_${index}__`, `\n\n__TABLE_${index}__\n\n`);
+            html = html.replace(`&lt;!---TABLE-PLACEHOLDER-${index}---&gt;`, `\n\n###TABLE${index}###\n\n`);
         });
         
         // Paragraphs (split by double line breaks)
@@ -292,7 +292,7 @@ function parseMarkdown(text) {
         html = '<p>' + html + '</p>';
         
         // Clean up paragraphs around tables and block elements
-        html = html.replace(/<p>__TABLE_(\d+)__<\/p>/g, '__TABLE_$1__');
+        html = html.replace(/<p>###TABLE(\d+)###<\/p>/g, '###TABLE$1###');
         html = html.replace(/<p>(<h[123]>)/g, '$1');
         html = html.replace(/(<\/h[123]>)<\/p>/g, '$1');
         html = html.replace(/<p>(<hr>)<\/p>/g, '$1');
@@ -312,7 +312,7 @@ function parseMarkdown(text) {
         
         // Restore tables as final step
         tables.forEach((table, index) => {
-            html = html.replace(`__TABLE_${index}__`, table);
+            html = html.replace(`###TABLE${index}###`, table);
         });
         
         return html;
