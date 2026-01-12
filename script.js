@@ -220,7 +220,7 @@ function parseMarkdown(text) {
     const tables = [];
     html = html.replace(/<table class="chat-table">[\s\S]*?<\/table>/g, (match) => {
         tables.push(match);
-        return `__TABLE_${tables.length - 1}__`;
+        return `__TABLE_PLACEHOLDER_${tables.length - 1}__`;
     });
     
     html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -264,22 +264,38 @@ function parseMarkdown(text) {
     html = html.replace(/((?:<li class="ul-item">.*?<\/li>\s*)+)/gs, '<ul>$1</ul>');
     html = html.replace(/class="ul-item"/g, '');
     
+    // Restore tables BEFORE paragraph processing
+    tables.forEach((table, index) => {
+        html = html.replace(`__TABLE_PLACEHOLDER_${index}__`, `\n\n__TABLE_${index}__\n\n`);
+    });
+    
     // Paragraphs (split by double line breaks)
     html = html.replace(/\n\n+/g, '</p><p>');
     html = html.replace(/\n/g, '<br>');
     
-    // Wrap in paragraph if not already wrapped
-    if (!html.startsWith('<')) {
-        html = '<p>' + html + '</p>';
-    } else {
-        html = '<p>' + html + '</p>';
-    }
+    // Wrap in paragraphs
+    html = '<p>' + html + '</p>';
+    
+    // Clean up paragraphs around tables and block elements
+    html = html.replace(/<p>__TABLE_(\d+)__<\/p>/g, '__TABLE_$1__');
+    html = html.replace(/<p>(<h[123]>)/g, '$1');
+    html = html.replace(/(<\/h[123]>)<\/p>/g, '$1');
+    html = html.replace(/<p>(<hr>)<\/p>/g, '$1');
+    html = html.replace(/<p>(<blockquote>)/g, '$1');
+    html = html.replace(/(<\/blockquote>)<\/p>/g, '$1');
+    html = html.replace(/<p>(<ul>)/g, '$1');
+    html = html.replace(/(<\/ul>)<\/p>/g, '$1');
+    html = html.replace(/<p>(<ol>)/g, '$1');
+    html = html.replace(/(<\/ol>)<\/p>/g, '$1');
+    html = html.replace(/<p>(<pre>)/g, '$1');
+    html = html.replace(/(<\/pre>)<\/p>/g, '$1');
     
     // Clean up empty paragraphs
     html = html.replace(/<p><\/p>/g, '');
     html = html.replace(/<p>\s*<\/p>/g, '');
+    html = html.replace(/<p><br><\/p>/g, '');
     
-    // Restore tables
+    // Restore tables as final step
     tables.forEach((table, index) => {
         html = html.replace(`__TABLE_${index}__`, table);
     });
