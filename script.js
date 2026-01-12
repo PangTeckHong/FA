@@ -109,11 +109,20 @@ const WEBHOOK_URL = 'https://n8ngc.codeblazar.org/webhook/f330b68b-3b5a-45b8-bb6
  * @returns {Promise<string>} - The AI's response
  */
 async function sendMessageToAI(userMessage) {
+    // Limit message length to prevent token limit errors (approximately 500 words = 750 tokens)
+    const MAX_MESSAGE_LENGTH = 2000; // characters
+    let messageToSend = userMessage;
+    
+    if (userMessage.length > MAX_MESSAGE_LENGTH) {
+        messageToSend = userMessage.substring(0, MAX_MESSAGE_LENGTH) + '...';
+        console.warn('Message truncated to fit token limits');
+    }
+    
     // Prepare payload with user message
     const payload = {
         source: 'mental-wellness-frontend',
         timestamp: new Date().toISOString(),
-        message: userMessage,
+        message: messageToSend,
         event: 'chat_message',
         sessionId: getOrCreateSessionId()
     };
@@ -182,6 +191,12 @@ async function sendMessageToAI(userMessage) {
         } else {
             const errorText = await response.text();
             console.error('Webhook error:', response.status, response.statusText, errorText);
+            
+            // Check if it's a token limit error
+            if (errorText.includes('Request too large') || errorText.includes('token')) {
+                return "Your message is a bit too detailed for me to process right now. Could you try asking in a shorter, more concise way? I'm here to help! 💙";
+            }
+            
             throw new Error(`Failed to get AI response: ${response.status} ${response.statusText}`);
         }
     } catch (error) {
